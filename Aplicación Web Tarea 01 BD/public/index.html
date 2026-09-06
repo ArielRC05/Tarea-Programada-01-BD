@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Base de Datos 1 - Empleados</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="container">
+        
+        <!-- VISTA 1: GRID PRINCIPAL (Lista de Empleados) -->
+        <div id="vista-grid" class="card">
+            <div class="card-header">
+                <div class="header-icon-circle">
+                    <i class="bi bi-person-fill"></i>
+                </div>
+                <span>Lista de Empleados</span>
+            </div>
+            
+            <div class="card-body">
+                <div id="msg-grid" class="alert-box alert-success hidden"></div>
+
+                <!-- Botón centrado en el medio entre el encabezado y la tabla -->
+                <div class="table-actions-center">
+                    <button id="btn-abrir-insertar" class="btn btn-blue">
+                        <i class="bi bi-person-plus"></i> Insertar Empleado
+                    </button>
+                </div>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 60px;">id</th>
+                            <th>Nombre</th>
+                            <th style="width: 140px; text-align: right;">Salario</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-cuerpo"></tbody>
+                </table>
+                <div id="texto-estado" style="text-align: center; color: #70757a; padding: 16px;">Cargando...</div>
+            </div>
+        </div>
+
+        <!-- VISTA 2: FORMULARIO (Insertar Empleado) -->
+        <div id="vista-formulario" class="card hidden">
+            <div class="card-header">
+                <div class="header-icon-circle">
+                    <i class="bi bi-person-plus-fill"></i>
+                </div>
+                <span>Insertar Empleado</span>
+            </div>
+
+            <div class="card-body">
+                <div id="msg-form" class="alert-box alert-error hidden"></div>
+
+                <form onsubmit="return false;">
+                    <!-- Fila Nombre -->
+                    <div class="form-row">
+                        <div class="input-prefix">
+                            <span class="prefix-icon"><i class="bi bi-person"></i></span>
+                            <span>Nombre:</span>
+                        </div>
+                        <input type="text" id="campo-nombre" class="input-field" autocomplete="off">
+                    </div>
+
+                    <!-- Fila Salario -->
+                    <div class="form-row">
+                        <div class="input-prefix">
+                            <span class="prefix-icon"><i class="bi bi-currency-dollar"></i></span>
+                            <span>Salario:</span>
+                        </div>
+                        <input type="text" id="campo-salario" class="input-field" autocomplete="off">
+                    </div>
+
+                    <!-- Botones -->
+                    <div class="form-actions">
+                        <button type="button" id="btn-insertar" class="btn btn-blue">
+                            <i class="bi bi-database"></i> Insertar
+                        </button>
+                        <button type="button" id="btn-regresar" class="btn btn-gray">
+                            <i class="bi bi-arrow-left"></i> Regresar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const vistaGrid = document.getElementById('vista-grid');
+        const vistaForm = document.getElementById('vista-formulario');
+        const tablaCuerpo = document.getElementById('tabla-cuerpo');
+        const textoEstado = document.getElementById('texto-estado');
+        const msgGrid = document.getElementById('msg-grid');
+        const msgForm = document.getElementById('msg-form');
+        
+        const inputNombre = document.getElementById('campo-nombre');
+        const inputSalario = document.getElementById('campo-salario');
+
+        function mostrarError(texto) {
+            msgForm.textContent = texto;
+            msgForm.classList.remove('hidden');
+        }
+
+        function ocultarError() {
+            msgForm.textContent = '';
+            msgForm.classList.add('hidden');
+        }
+
+        async function cargarGrid() {
+            try {
+                textoEstado.classList.remove('hidden');
+                textoEstado.textContent = 'Cargando datos...';
+                tablaCuerpo.innerHTML = '';
+
+                const res = await fetch('/api/empleados');
+                const data = await res.json();
+                
+                textoEstado.classList.add('hidden');
+
+                data.forEach(item => {
+                    const fila = document.createElement('tr');
+                    const salarioFormateado = Number(item.Salario).toLocaleString('es-CR');
+                    fila.innerHTML = `
+                        <td>${item.id}</td>
+                        <td>${item.Nombre}</td>
+                        <td style="text-align: right;">${salarioFormateado}</td>
+                    `;
+                    tablaCuerpo.appendChild(fila);
+                });
+            } catch (err) {
+                textoEstado.textContent = 'Error al consultar la base de datos.';
+            }
+        }
+
+        // Navegación
+        document.getElementById('btn-abrir-insertar').onclick = () => {
+            ocultarError();
+            msgGrid.classList.add('hidden');
+            vistaGrid.classList.add('hidden');
+            vistaForm.classList.remove('hidden');
+            inputNombre.focus();
+        };
+
+        document.getElementById('btn-regresar').onclick = () => {
+            vistaForm.classList.add('hidden');
+            vistaGrid.classList.remove('hidden');
+            cargarGrid();
+        };
+
+        // Inserción con validaciones en capa UI
+        document.getElementById('btn-insertar').onclick = async () => {
+            ocultarError();
+
+            const nombre = inputNombre.value.trim();
+            const salario = inputSalario.value.trim();
+
+            if (!nombre || !salario) {
+                mostrarError('Todos los campos son obligatorios.');
+                return;
+            }
+
+            if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s-]+$/.test(nombre)) {
+                mostrarError('El nombre solo debe contener letras o guiones.');
+                return;
+            }
+
+            if (!/^\d+(\.\d{1,4})?$/.test(salario)) {
+                mostrarError('El salario debe ser un número válido (máx. 4 decimales).');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/empleados', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nombre, salario: parseFloat(salario) })
+                });
+
+                const body = await res.json();
+
+                if (res.ok) {
+                    inputNombre.value = '';
+                    inputSalario.value = '';
+                    vistaForm.classList.add('hidden');
+                    vistaGrid.classList.remove('hidden');
+                    
+                    msgGrid.textContent = 'Inserción exitosa';
+                    msgGrid.classList.remove('hidden');
+                    cargarGrid();
+                } else {
+                    mostrarError(body.error || 'Error al procesar la inserción.');
+                }
+            } catch (err) {
+                mostrarError('No se pudo conectar con el servidor.');
+            }
+        };
+
+        cargarGrid();
+    </script>
+</body>
+</html>

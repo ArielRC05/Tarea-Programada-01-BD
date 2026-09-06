@@ -1,0 +1,19 @@
+# Dependencias de Node.js (pesan cientos de MB y se regeneran con npm install)
+node_modules/
+
+# Variables de entorno y credenciales sensibles (claves de SQL Server)
+.env
+.env.local
+
+# Archivos de registro y logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Configuraciones locales del editor
+.vscode/
+.idea/
+
+# Archivos del sistema operativo
+.DS_Store
+Thumbs.db
